@@ -35,9 +35,9 @@ function arbitraje (monedas, monedaIngresada){
     }
 );
     //Mostrar resultados
-    console.log(`La mejor opcion de compra de ${monedaIngresada} es en ${mejorCompra.exchange} a un precio de ${mejorCompra.precio}`);
-    console.log(`La mejor opcion de venta de ${monedaIngresada} es en ${mejorVenta.exchange} a un precio de ${mejorVenta.precio}`);
-    console.log(`La ganancia es de ${mejorVenta.precio - mejorCompra.precio}`);
+    alert(`La mejor opcion de compra de ${monedaIngresada} es en ${mejorCompra.exchange} a un precio de ${mejorCompra.precio}`);
+    alert(`La mejor opcion de venta de ${monedaIngresada} es en ${mejorVenta.exchange} a un precio de ${mejorVenta.precio}`);
+    alert(`La ganancia es de ${mejorVenta.precio - mejorCompra.precio}`);
 };
 
 // Llamo a la función
