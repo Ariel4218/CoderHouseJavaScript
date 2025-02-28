@@ -1,104 +1,182 @@
 // Proyecto Arbitraje de Criptomonedas
 // Autor: Ariel Duhart
 
-/*
-// Variable con estructura de monedas
-const monedas = {
-    btc: [ { exchange: "Binance", compra: 1000, venta: 1050, comision: 0.01 }, 
-        { exchange: "Decrypto", compra: 1010, venta: 1040, comision: 0.02 }, ],
-    eth: [ { exchange: "Binance", compra: 100, venta: 105, comision: 0.01 }, 
-        { exchange: "Decrypto", compra: 101, venta: 104, comision: 0.02 }, ],
-};
-*/
+//creo array con monedas fiat
+const fiatCurrenciesArray = ['ARS','BRL','MXN', 'UYU', 'USD', 'EUR'];
+const criptoCurrenciesArray = ['BTC','ETH','SOL','UNI','USDT','WLD', 'DAI'];
 
-//Clase constructora del objeto Exchanges y metodo para calcular el precio de compra y el precio de venta mas comisiones
-class Exchanges {
-    constructor (exchange, precioCompra, precioVenta, comision){
-        this.exchange = exchange.toUpperCase();
-        this.precioCompra = Number(precioCompra);
-        this.precioVenta = Number(precioVenta);
-        this.comision = Number(comision);
-        this.precioCompraConComision = 0;
-        this.precioVentaConComision = 0;
-    }
-    //creo un metodo para calcular la comision
-    agregarComision(){
-        this.precioCompraConComision = this.precioCompra * (1+this.comision);
-        this.precioVentaConComision = this.precioVenta * (1+this.comision);
-    }
+//cargo dinamicamente el array de monedas fiat al DOM
+const llenarSelectFiat = ()=>{
+    const fiatSelector = document.getElementById("fiat");
+// recorro el array de monedas fiat y creo los elementos del selector
+    fiatCurrenciesArray.forEach(currency=>{        
+        const option = document.createElement("option");
+        option.value += currency;
+        option.textContent += currency; //esta propiedad muestra el contenido
+        fiatSelector.appendChild(option);
+    });      
 };
 
-//Clase constructora del objeto Monedas para almacenar las criptomonedas
-class Monedas {
-    constructor (){
-        this.moneda = {};
-    }
+const llenarSelectCoin = ()=>{
+    const coinSelector = document.getElementById("coin");
 
-    // creo metodo para agregar el exchange a la moneda
-    agregarMoneda(tipo, exchange, precioCompra, precioVenta, comision){
-        const nuevoExchange = new Exchanges(exchange, precioCompra, precioVenta, comision);
-        nuevoExchange.agregarComision(); // Realizo el calculo de la comision
-        if (!this.moneda[tipo]){
-            this.moneda[tipo] = [];
+    criptoCurrenciesArray.forEach(coin=>{
+        const option = document.createElement("option");
+        option.value += coin;
+        option.textContent += coin;
+        coinSelector.appendChild(option)
+    });
+};
+
+//llamo a las funciones para pintar el DOM
+llenarSelectFiat();
+llenarSelectCoin();
+
+//obtengo el boton para poder escucharlo
+
+const boton = document.getElementById("btnconsultar");
+
+boton.onclick = async () => {
+    //obtengo los id de los elementos
+    const fiatSelector = document.getElementById("fiat");
+    const coinSelector = document.getElementById("coin");
+    const volumeInput = document.getElementById("volumen");
+
+    const selectedFiat = fiatSelector.value;
+    const selectedCoin = coinSelector.value;
+    const enteredVolume = volumeInput.value;
+
+    //usando operadores ternarios para verificar los valores
+    const mensaje = (selectedFiat==='Moneda a usar' || selectedCoin === 'Moneda a Arbitrar' || enteredVolume=='')
+    ? 'Revisa los valores cargados'
+    : 'Valores cargados Correctamente';
+
+    const icono = (selectedFiat==='Moneda a usar' || selectedCoin === 'Moneda a Arbitrar' || enteredVolume=='')
+    ? 'error'
+    : 'success';
+
+    Swal.fire({
+        icon: icono,
+        title: icono==='error' ? 'Oops...!' : 'Great!',
+        text: mensaje
+    });
+    //return;
+
+    //obtengo los datos de la api con ls funcion creada para ello
+    const data = await getCriptoYaData(selectedCoin,selectedFiat,enteredVolume);
+
+    //creo la tabla con los datos obtenidos
+    crearTabla(data);
+
+    formatearMejorCompraMejorVenta(data);
+
+    crearBoton();
+
+};
+
+//Conecto con la API de criptoya
+const criptoYaApi = 'https://criptoya.com/api';
+
+//Creo funcion para obtener los datos de la api
+const getCriptoYaData = async(coin, fiat, volume)=>{
+    const apiUrl = `${criptoYaApi}/${coin}/${fiat}/${volume}`;
+    const response = await fetch (apiUrl);
+    const data = await response.json()    
+    return data;
+};
+
+//creo una tabla para mostrar en el DOM con los datos obtenidos en la API
+const crearTabla = (data) => {
+    const resultadosDiv = document.getElementById('resultados');
+    resultadosDiv.innerHTML = ''; // Limpiar contenido previo
+
+    const tabla = document.createElement("table");
+    tabla.className = "table table-striped table-dark";
+
+    // Crear el encabezado de la tabla
+    const thead = document.createElement("thead");
+    const encabezado = `
+        <tr>
+            <th>Exchange</th>
+            <th>Precio Compra</th>
+            <th>Precio Venta</th>
+        </tr>
+    `;
+    thead.innerHTML = encabezado;
+    tabla.appendChild(thead);
+
+    // Crear el cuerpo de la tabla
+    const tbody = document.createElement("tbody");
+    Object.keys(data).forEach(exchange => {
+        const fila = `
+            <tr>
+                <td>${exchange}</td>
+                <td>${data[exchange].totalAsk}</td>
+                <td>${data[exchange].totalBid}</td>
+            </tr>
+        `;
+        tbody.innerHTML += fila;
+    });
+    tabla.appendChild(tbody);
+
+    resultadosDiv.appendChild(tabla);
+};
+
+// Función para formatear las celdas con el mejor totalAsk y totalBid
+const formatearMejorCompraMejorVenta = (data) => {
+    let mejorCompra = { exchange: "", totalAsk: Infinity };
+    let mejorVenta = { exchange: "", totalBid: -Infinity };
+
+    // Encontrar el mejor totalAsk y totalBid
+    Object.keys(data).forEach(exchange => {
+        if (data[exchange].totalAsk < mejorCompra.totalAsk) {
+            mejorCompra = { exchange, totalAsk: data[exchange].totalAsk };
         }
-        this.moneda[tipo].push(nuevoExchange);
-    }
-};
-
-// creo el objeto monedas
-const moneda = new Monedas();
-// con el metodo agregarMoneda() agrego la moneda y los datos de los exchanges
-moneda.agregarMoneda("BTC", "Binance", 1000, 1050, 0.01);
-moneda.agregarMoneda("BTC", 'Decrypto', 1010, 1040, 0.02);
-moneda.agregarMoneda("ETH", 'Binance', 100, 105, 0.01);
-moneda.agregarMoneda("ETH", 'Decrypto', 101, 104, 0.02);
-moneda.agregarMoneda("SOL", 'Binance', 50, 55, 0.01);
-moneda.agregarMoneda("SOL", 'Decrypto', 51, 54, 0.02);
-
-//console.log(moneda.moneda["SOL"]);
-
-// Función para calcular el arbitraje
-function arbitraje (moneda, monedaIngresada){
-    //verificar que la moneda ingresada exista
-    if (!moneda.moneda[monedaIngresada]){// Se usa !moneda.monedas[monedaIngresada] ya que es la manera en la que se verifica si una llave no existe dentro de un objeto. Esto arroja True si no existe
-        alert( "La moneda ingresada no existe");
-        return;
-    };
-
-    //Creo variables para almacenar el valor de la mejor opcion de compra y venta
-    let mejorCompra = { exchange: "", precio: Infinity };// infinity representa un numero positivo > a cualquier elemento
-    let mejorVenta = { exchange: "", precio: -Infinity }; // -infinity representa un numero negativo < a cualquier elemento
-
-    // Recorro el objeto moneda de la clase monedas que tiene la propiedad moneda cuya clave va a ser la moneda ingresada
-    moneda.moneda[monedaIngresada].forEach(moneda => {
-        //Actualizo la mejor opcion de compra
-        if (moneda.precioCompraConComision < mejorCompra.precio) {
-            mejorCompra = {exchange: moneda.exchange, precio: moneda.precioCompraConComision};
-        }
-
-        //Actualizo la mejor opcion de venta
-        if (moneda.precioVentaConComision > mejorVenta.precio){
-            mejorVenta = {exchange:moneda.exchange, precio: moneda.precioVentaConComision};
+        if (data[exchange].totalBid > mejorVenta.totalBid) {
+            mejorVenta = { exchange, totalBid: data[exchange].totalBid };
         }
     });
 
-
-    //Mostrar resultados
-    alert(`La mejor opcion de compra de ${monedaIngresada} es en ${mejorCompra.exchange} a un precio de ${mejorCompra.precio}`);
-    alert(`La mejor opcion de venta de ${monedaIngresada} es en ${mejorVenta.exchange} a un precio de ${mejorVenta.precio}`);
-    alert(`La ganancia es de ${mejorVenta.precio - mejorCompra.precio}`);
+    // Formatear las celdas correspondientes
+    const filas = document.querySelectorAll("#resultados table tbody tr");
+    filas.forEach(fila => {
+        const celdas = fila.querySelectorAll("td");
+        if (celdas[0].textContent === mejorCompra.exchange) {
+            celdas[1].style.backgroundColor = "green";
+            celdas[1].style.color = "white";
+        }
+        if (celdas[0].textContent === mejorVenta.exchange) {
+            celdas[2].style.backgroundColor = "red";
+            celdas[2].style.color = "white";
+        }
+    });
 };
 
-// Llamo a la función
+const crearBoton = () => {
+    const resultadosDiv = document.getElementById("resultados")
+    const botonLimpiar = document.createElement("button");
+    botonLimpiar.type = "buton";
+    botonLimpiar.className = "btn btn-danger";
+    botonLimpiar.id = "btnLimpiar";
+    botonLimpiar.textContent = "Limpiar tabla"
+    resultadosDiv.appendChild(botonLimpiar);
 
-do {
-    const monedaIngresada = prompt("Ingrese la moneda a arbitrar (btc, eth o sol):").toUpperCase();
-    arbitraje(moneda, monedaIngresada);
+    botonLimpiar.onclick = () => {
+        // const resultadosDiv = document.getElementById('resultados');
+        resultadosDiv.innerHTML = ''; // Limpiar contenido de resultados
+         // Volver a agregar el botón de limpiar
+    };
+};
 
-} while (confirm("Desea realizar otra operación?"));
-
-
-    
+const contacto = document.getElementById("contacto");
+contacto.onclick = (event)=>{
+    event.preventDefault();
+    Swal.fire({
+        icon: "info",
+        title: "Contacto",
+        text: "Formulario en construccion"
+    });
+};
 
 
 

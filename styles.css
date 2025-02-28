@@ -1,0 +1,38 @@
+#background{
+    background-image: url(images/bannerBackround.png);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    height: 100vh;
+    overflow: hidden; /* Evitar que el contenido salga del contenedor */
+    display: flex;
+    flex-direction: column;
+    
+}
+
+.navbar-brand{
+    font-size: 2.25rem;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+#selectores {
+    margin-top: 80px; /* Ajusta el margen superior según sea necesario */
+    padding: 20px;
+    background-color: rgba(35, 34, 34, 0.8); /* Fondo semitransparente para mejor visibilidad */
+    border-radius: 10px;
+}
+
+.form-select, .input-group-lg .form-control, .btnconsultar {
+    font-size: 1.25rem; /* Ajusta el tamaño de la fuente según sea necesario */
+}
+
+#resultados {
+    flex: 1;
+    overflow-y: auto; /* Agregar barra de desplazamiento vertical */
+    margin-top: 20px;
+}
+
+#btnLimpiar {
+    margin-top: 20px; /* Añadir margen superior para separar el botón de la tabla */
+    display: block; /* Asegurar que el botón sea un bloque para que ocupe toda la línea */
+}
